@@ -1,0 +1,30 @@
+{
+  "name": "auditagent",
+  "version": "1.0.0",
+  "description": "Autonomous AI smart-contract audit oracle on Mantle — every verdict recorded on-chain.",
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy": "node --env-file=.env scripts/deploy.mjs",
+    "audit": "node --env-file=.env tsx agent/index.ts",
+    "serve": "node --env-file=.env tsx server/api.ts",
+    "test": "tsx test/run.ts"
+  },
+  "keywords": ["mantle", "ai-agent", "smart-contract-audit", "web3", "solidity", "hackathon"],
+  "author": "luongs3",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.7",
+    "@nomicfoundation/hardhat-verify": "^3.0.19",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "hardhat": "^3.8.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "ethers": "^6.13.0",
+    "express": "^5.2.1",
+    "tsx": "^4.22.4"
+  }
+}

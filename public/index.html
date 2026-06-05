@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AuditAgent — AI Smart-Contract Audit Oracle on Mantle</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#121822; --panel2:#0e141d; --border:#1f2a37;
+    --text:#e6edf3; --muted:#8b97a7; --accent:#19e6a0; --accent2:#37b6ff;
+    --crit:#ff4d5e; --high:#ff8a3d; --med:#ffd23d; --low:#5fd0ff; --info:#8b97a7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#10303a 0%,var(--bg) 55%);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--accent2);text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 80px}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .logo{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-size:22px;box-shadow:0 6px 24px rgba(25,230,160,.25)}
+  h1{font-size:23px;margin:0;letter-spacing:.2px}
+  .tag{color:var(--muted);font-size:13px;margin-top:2px}
+  .hero{margin:18px 0 26px;padding:20px 22px;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:16px}
+  .hero p{margin:8px 0 0;color:var(--muted);max-width:760px}
+  .pill{display:inline-block;padding:3px 10px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--muted);margin-right:6px}
+  .pill b{color:var(--accent)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  input[type=text]{flex:1;min-width:280px;background:#0b1019;border:1px solid var(--border);border-radius:11px;color:var(--text);padding:13px 14px;font-size:14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  button{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04241a;border:0;border-radius:11px;padding:13px 20px;font-weight:700;font-size:14px;cursor:pointer;transition:transform .08s}
+  button:hover{transform:translateY(-1px)} button:disabled{opacity:.5;cursor:wait;transform:none}
+  button.ghost{background:#0b1019;color:var(--text);border:1px solid var(--border);font-weight:600}
+  .examples{margin-top:10px;font-size:12px;color:var(--muted)}
+  .examples code{cursor:pointer;color:var(--accent2);border-bottom:1px dotted var(--border)}
+  .grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:24px}
+  @media(min-width:840px){.grid{grid-template-columns:1.3fr 1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:16px;padding:18px 20px}
+  .card h3{margin:0 0 12px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .verdict{display:flex;align-items:center;gap:18px;margin-bottom:6px}
+  .score{font-size:46px;font-weight:800;line-height:1}
+  .rk{padding:5px 13px;border-radius:999px;font-weight:700;font-size:13px}
+  .rk.Critical{background:rgba(255,77,94,.15);color:var(--crit);border:1px solid var(--crit)}
+  .rk.High{background:rgba(255,138,61,.15);color:var(--high);border:1px solid var(--high)}
+  .rk.Medium{background:rgba(255,210,61,.12);color:var(--med);border:1px solid var(--med)}
+  .rk.Low{background:rgba(95,208,255,.12);color:var(--low);border:1px solid var(--low)}
+  .rk.Unknown{background:rgba(139,151,167,.12);color:var(--info);border:1px solid var(--info)}
+  .meta{color:var(--muted);font-size:13px;margin:8px 0}
+  .meta b{color:var(--text)}
+  .brain{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--border);color:var(--accent)}
+  .reason{margin-top:12px;padding:12px 14px;background:#0b1019;border:1px solid var(--border);border-radius:11px;color:#cdd7e3;font-size:13.5px}
+  .finding{padding:11px 13px;border:1px solid var(--border);border-left-width:4px;border-radius:9px;margin-bottom:9px;background:#0b1019}
+  .finding.critical{border-left-color:var(--crit)} .finding.high{border-left-color:var(--high)}
+  .finding.medium{border-left-color:var(--med)} .finding.low{border-left-color:var(--low)} .finding.info{border-left-color:var(--info)}
+  .finding .ft{font-weight:600;font-size:13.5px} .finding .fd{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .finding .fe{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--accent);margin-top:5px;word-break:break-all}
+  .sev{font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:5px;font-weight:700;margin-right:7px}
+  .sev.critical{background:var(--crit);color:#fff} .sev.high{background:var(--high);color:#241400}
+  .sev.medium{background:var(--med);color:#241f00} .sev.low{background:var(--low);color:#01222e} .sev.info{background:var(--info);color:#0a0e14}
+  .att{padding:11px 13px;border:1px solid var(--border);border-radius:9px;margin-bottom:9px;background:#0b1019;font-size:13px}
+  .att .a1{display:flex;justify-content:space-between;align-items:center}
+  .att .addr{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--accent2)}
+  .muted{color:var(--muted)} .mono{font-family:ui-monospace,Menlo,monospace}
+  .empty{color:var(--muted);text-align:center;padding:30px 0}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:#04241a;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .stat{display:flex;gap:22px;flex-wrap:wrap;margin-top:6px}
+  .stat div span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .stat div b{font-size:18px}
+  footer{margin-top:40px;color:var(--muted);font-size:12.5px;text-align:center;line-height:1.8}
+  .onchain-banner{margin-top:12px;padding:10px 13px;border-radius:9px;background:rgba(25,230,160,.08);border:1px solid var(--accent);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🛡️</div>
+    <div>
+      <h1>AuditAgent</h1>
+      <div class="tag">Autonomous AI smart-contract audit oracle · every verdict recorded on Mantle</div>
+    </div>
+  </header>
+
+  <div class="hero">
+    <span class="pill">Network <b>Mantle Sepolia</b></span>
+    <span class="pill">Brain <b>Static + Z.AI GLM</b></span>
+    <span class="pill">Identity <b>ERC-8004-style on-chain</b></span>
+    <p>Paste any Mantle contract address. The agent runs an autonomous <b>FETCH → REASON → SCORE → ACT</b>
+       loop: it pulls the contract, runs 11 static vulnerability heuristics plus an LLM semantic audit,
+       computes a 0–100 safety score, and writes the verdict <b>permanently on-chain</b> — a public,
+       queryable audit-reputation layer for the Mantle ecosystem.</p>
+    <div class="stat" id="stats">
+      <div><span>Registry</span><b id="st-reg" class="mono">…</b></div>
+      <div><span>Attestations on-chain</span><b id="st-total">…</b></div>
+      <div><span>Status</span><b id="st-status" style="color:var(--accent)">live</b></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <input id="addr" type="text" placeholder="0x… Mantle contract address" spellcheck="false" />
+    <button id="go">Audit</button>
+    <button id="goAttest" class="ghost" title="Run audit AND write the verdict on-chain">Audit + Attest on-chain</button>
+  </div>
+  <div class="examples">
+    Try: <code data-a="0xe0F337845C1747bfeF1B16Ed3a0201C4d7A2A71D">VulnerableVault (demo target)</code> ·
+    <code data-a="0xce38911461B698735DBc0bA21c73202C934934Ef">AttestationRegistry (this dapp)</code>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="resultCard">
+      <h3>Audit result</h3>
+      <div class="empty" id="resultEmpty">Run an audit to see the AI verdict.</div>
+      <div id="result" style="display:none"></div>
+    </div>
+    <div class="card">
+      <h3>Recent on-chain attestations</h3>
+      <div id="atts"><div class="empty">loading…</div></div>
+    </div>
+  </div>
+
+  <footer>
+    AuditAgent · The Turing Test Hackathon 2026 · AI DevTools track ·
+    <a id="lnk-reg" target="_blank">Registry on Explorer</a> ·
+    <a href="https://github.com/luongs3/auditagent-mantle" target="_blank">Source on GitHub</a><br/>
+    All AI verdicts are signed by the agent wallet and stored immutably on Mantle Sepolia.
+  </footer>
+</div>
+
+<script>
+// Frontend is served same-origin with the API, so relative paths just work.
+// Override with window.AUDITAGENT_API only if hosting the UI separately.
+const API_BASE = window.AUDITAGENT_API || "";
+
+const RISK = ["Unknown","Low","Medium","High","Critical"];
+const $ = s => document.querySelector(s);
+
+async function loadRegistry(){
+  try{
+    const r = await fetch(API_BASE + "/api/registry"); const d = await r.json();
+    $("#st-reg").textContent = d.address.slice(0,6)+"…"+d.address.slice(-4);
+    $("#st-total").textContent = d.total;
+    $("#lnk-reg").href = d.explorer;
+  }catch(e){ $("#st-status").textContent = "api down"; $("#st-status").style.color="var(--crit)"; }
+}
+
+async function loadAtts(){
+  try{
+    const r = await fetch(API_BASE + "/api/attestations?limit=8"); const d = await r.json();
+    if(!d.attestations || !d.attestations.length){ $("#atts").innerHTML='<div class="empty">none yet</div>'; return; }
+    $("#atts").innerHTML = d.attestations.map(a=>`
+      <div class="att">
+        <div class="a1">
+          <span class="rk ${a.riskLabel}">${a.riskLabel} · ${a.score}/100</span>
+          <span class="muted">#${a.id}</span>
+        </div>
+        <div class="addr">${a.target}</div>
+        <div class="muted" style="margin-top:4px">by ${a.auditor.slice(0,6)}…${a.auditor.slice(-4)} · ${new Date(a.timestamp*1000).toLocaleString()}</div>
+      </div>`).join("");
+  }catch(e){ $("#atts").innerHTML='<div class="empty">api down</div>'; }
+}
+
+function sevClass(s){ return (s||"info").toLowerCase(); }
+
+function renderResult(d){
+  $("#resultEmpty").style.display="none";
+  const el = $("#result"); el.style.display="block";
+  const findings = (d.findings||[]).slice().sort((a,b)=>{
+    const o={critical:0,high:1,medium:2,low:3,info:4}; return o[a.severity]-o[b.severity];
+  });
+  el.innerHTML = `
+    <div class="verdict">
+      <div class="score" style="color:var(--${d.riskLabel==='Critical'?'crit':d.riskLabel==='High'?'high':d.riskLabel==='Medium'?'med':'low'})">${d.score}<span style="font-size:18px;color:var(--muted)">/100</span></div>
+      <div>
+        <span class="rk ${d.riskLabel}">${d.riskLabel} risk</span>
+        <div class="meta" style="margin-top:6px">${d.contractName?('<b>'+d.contractName+'</b> · '):''}<span class="brain">🧠 ${d.brain}</span>${d.cached?' · <span class="muted">cached</span>':''}</div>
+      </div>
+    </div>
+    <div class="meta mono" style="font-size:11.5px">${d.target}</div>
+    ${d.onchain?`<div class="onchain-banner">✅ Verdict written on-chain · attestation #${d.onchain.id} · <a target="_blank" href="https://sepolia.mantlescan.xyz/tx/${d.onchain.txHash}">view tx</a></div>`:''}
+    ${d.reasoning?`<div class="reason"><b style="color:var(--accent)">AI reasoning:</b> ${d.reasoning}</div>`:''}
+    <div style="margin-top:14px">${findings.length?findings.map(f=>`
+      <div class="finding ${sevClass(f.severity)}">
+        <div class="ft"><span class="sev ${sevClass(f.severity)}">${f.severity}</span>${f.title}</div>
+        ${f.detail?`<div class="fd">${f.detail}</div>`:''}
+        ${f.evidence?`<div class="fe">${f.evidence}</div>`:''}
+      </div>`).join(''):'<div class="muted">No issues flagged.</div>'}</div>
+  `;
+}
+
+async function audit(attest){
+  const addr = $("#addr").value.trim();
+  if(!/^0x[a-fA-F0-9]{40}$/.test(addr)){ alert("Enter a valid 0x… address"); return; }
+  const btn = attest ? $("#goAttest") : $("#go");
+  const old = btn.innerHTML; btn.disabled=true; btn.innerHTML='<span class="spin"></span> auditing…';
+  try{
+    const r = await fetch(API_BASE + "/api/audit", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({address:addr, attest:!!attest})
+    });
+    const d = await r.json();
+    if(d.error){ alert("Error: "+d.error); }
+    else { renderResult(d); if(attest){ loadAtts(); loadRegistry(); } }
+  }catch(e){ alert("Request failed: "+e.message); }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+}
+
+$("#go").onclick = ()=>audit(false);
+$("#goAttest").onclick = ()=>audit(true);
+$("#addr").addEventListener("keydown", e=>{ if(e.key==="Enter") audit(false); });
+document.querySelectorAll(".examples code").forEach(c=>c.onclick=()=>{ $("#addr").value=c.dataset.a; audit(false); });
+
+loadRegistry(); loadAtts();
+</script>
+</body>
+</html>

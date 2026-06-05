@@ -1,0 +1,10 @@
+{
+  "0xe0f337845c1747bfef1b16ed3a0201c4d7a2a71d": {
+    "name": "VulnerableVault",
+    "file": "contracts/VulnerableVault.sol"
+  },
+  "0xce38911461b698735dbc0ba21c73202c934934ef": {
+    "name": "AttestationRegistry",
+    "file": "contracts/AttestationRegistry.sol"
+  }
+}

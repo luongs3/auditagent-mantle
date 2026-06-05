@@ -1,0 +1,10 @@
+{
+  "network": "mantleSepolia",
+  "chainId": 5003,
+  "address": "0xce38911461B698735DBc0bA21c73202C934934Ef",
+  "deployer": "0x3cFAb06532aA3f09d4C44EfBd14fbb319ed7BaAd",
+  "deployedAt": "2026-06-05T05:00:02.157Z",
+  "explorer": "https://explorer.sepolia.mantle.xyz/address/0xce38911461B698735DBc0bA21c73202C934934Ef",
+  "vulnerableVault": "0xe0F337845C1747bfeF1B16Ed3a0201C4d7A2A71D",
+  "vulnerableVaultExplorer": "https://sepolia.mantlescan.xyz/address/0xe0F337845C1747bfeF1B16Ed3a0201C4d7A2A71D"
+}
