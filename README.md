@@ -1,118 +1,64 @@
-# 🛡️ AuditAgent — Autonomous AI Smart-Contract Audit Oracle on Mantle
+# Track 3 (Unicorn) — AuditAgent: Autonomous AI Smart-Contract Audit Oracle
+**AMD Developer Hackathon: ACT II** · Team: AuditAgent
 
-> Submission for **The Turing Test Hackathon 2026** · AI DevTools track
-> An autonomous AI agent that audits smart contracts and records every verdict **permanently on-chain**.
+> An autonomous AI agent that audits Ethereum smart contracts and records every verdict **permanently on-chain** — powered by Fireworks AI running on AMD Instinct MI300X GPUs.
 
-AuditAgent is an on-chain **audit-reputation layer** for the Mantle ecosystem. Point it at any
-Mantle contract and an autonomous agent runs a four-step loop — **FETCH → REASON → SCORE → ACT** —
-then signs and writes its risk verdict to an on-chain registry. The result is a permanent, public,
-queryable record of AI security assessments: the first audit oracle where the AI's decisions are
-themselves verifiable on Mantle.
+## What it does
 
----
-
-## 🔴 Live demo & deployed addresses
-
-| Thing | Value |
-|---|---|
-| **Live dapp** | http://31.220.75.26:8790/ |
-| **Network** | Mantle Sepolia (chainId **5003**) |
-| **AttestationRegistry** | [`0xce38911461B698735DBc0bA21c73202C934934Ef`](https://sepolia.mantlescan.xyz/address/0xce38911461B698735DBc0bA21c73202C934934Ef) |
-| **VulnerableVault** (demo audit target) | [`0xe0F337845C1747bfeF1B16Ed3a0201C4d7A2A71D`](https://sepolia.mantlescan.xyz/address/0xe0F337845C1747bfeF1B16Ed3a0201C4d7A2A71D) |
-| **Agent wallet** (auditor) | `0x3cFAb06532aA3f09d4C44EfBd14fbb319ed7BaAd` |
-
----
-
-## 🧠 Why this is a real AI agent, not "AI" in a README
-
-The agent runs a genuine autonomous loop and its **brain is a real LLM** (Z.AI / GLM), with a
-deterministic static-analysis layer as a keyless fallback:
+AuditAgent is an on-chain **audit-reputation layer**. Point it at any contract address and an autonomous agent runs a four-step loop — **FETCH → REASON → SCORE → ACT** — then signs and writes its risk verdict to an immutable on-chain registry.
 
 ```
-  TRIGGER   a contract address is submitted (UI, API, or batch)
-     │
-  1. FETCH   pull the contract's source/bytecode from Mantle
-     │
-  2. REASON  static heuristics (11 vuln rules) + Z.AI GLM semantic audit
-     │        → reentrancy, access-control, oracle-manipulation, tx.origin,
-     │          selfdestruct, integer/precision, logic & economic flaws …
-     │
-  3. SCORE   aggregate findings → Risk enum + 0–100 safety score
-     │
-  4. ACT     agent wallet signs attest() → verdict written ON-CHAIN
-     │
-  VERIFY     frontend reads the on-chain attestation back, renders the risk card
+Submit contract address
+       │
+  1. FETCH   Pull contract source / bytecode from chain
+       │
+  2. REASON  Static heuristics (11 vuln rules) + LLM semantic audit via Fireworks AI
+       │        → reentrancy, access-control, oracle-manipulation, tx.origin,
+       │          selfdestruct, integer/precision, logic & economic flaws …
+       │
+  3. SCORE   Aggregate findings → Risk enum + 0–100 safety score
+       │
+  4. ACT     Agent wallet signs attest() → verdict written ON-CHAIN
+       │
+VERIFY     Frontend reads on-chain attestation back, renders risk card
 ```
 
-On a deliberately vulnerable lending pool, the static layer caught 2 issues and the **LLM added 9
-semantic findings** — including a *critical* missing-access-control on the oracle setter that
-enables price manipulation and pool draining. That is auditor-grade reasoning, then committed
-on-chain as a permanent record.
+## AMD / Fireworks Integration
 
----
+The agent's LLM reasoning runs via **Fireworks AI API** — which serves models on **AMD Instinct MI300X GPUs** in AMD Developer Cloud. This gives:
+- Fast semantic vulnerability analysis (deepseek-v4-pro default)
+- OpenAI-compatible interface, easily swappable to any Fireworks model
+- Keyless fallback: static analysis alone if no API key (agent is never blocked)
 
-## 🏗️ Architecture
+Set `FIREWORKS_API_KEY` and optionally `FIREWORKS_MODEL` to use a different model.
 
-```
-auditagent/
-├── contracts/
-│   ├── AttestationRegistry.sol   # on-chain registry of AI verdicts (the AI-on-chain function)
-│   └── VulnerableVault.sol       # intentionally-insecure demo audit target
-├── agent/
-│   ├── fetch.ts        # FETCH  — source from local registry / explorer / bytecode
-│   ├── analyzer.ts     # REASON — 11 static vulnerability heuristics (keyless)
-│   ├── reasoner.ts     # REASON — Z.AI GLM semantic audit layer (graceful fallback)
-│   ├── risk.ts         # SCORE  — findings → Risk enum + 0–100 safety score
-│   └── index.ts        # orchestrator + CLI (FETCH→REASON→SCORE→ACT)
-├── server/
-│   └── api.ts          # Express API + serves the frontend (same-origin)
-├── public/
-│   └── index.html      # the dapp UI (risk cards, on-chain attestation feed)
-└── scripts/            # deploy + ops
-```
-
-### The on-chain AI function
-`AttestationRegistry.attest(target, risk, score, findingsHash, reportURI)` is the AI-powered
-function callable on-chain. The agent wallet calls it after every audit; the verdict (risk level,
-safety score, keccak256 of the full report, report URI) is stored immutably and emitted as an
-`Attested` event for cheap off-chain indexing.
-
----
-
-## 🚀 Run it yourself
+## Running (Docker)
 
 ```bash
-npm install
-cp .env.example .env        # add DEPLOYER_PK (+ optional ZAI_API_KEY, ETHERSCAN_API_KEY)
-npx hardhat compile
-
-# Deploy the registry to Mantle Sepolia
-node --env-file=.env scripts/deploy.mjs
-
-# Audit a contract from the CLI (FETCH→REASON→SCORE→ACT, writes on-chain)
-npx tsx agent/index.ts 0xe0F337845C1747bfeF1B16Ed3a0201C4d7A2A71D
-
-# Or run the full dapp (API + UI on :8790)
-PORT=8790 node --env-file=.env npx tsx server/api.ts
-# open http://localhost:8790
+docker build -t auditagent .
+docker run -p 3333:3333 \
+  -e FIREWORKS_API_KEY=your_fireworks_key \
+  -e FIREWORKS_MODEL=accounts/fireworks/models/deepseek-v4-pro \
+  -e MANTLE_RPC=https://rpc.sepolia.mantle.xyz \
+  -e REGISTRY_ADDRESS=0x5C1F52Cd36CD8C3B63d697FEE891e511F886465A \
+  auditagent
 ```
 
-### API
+## API
 
-| Endpoint | Description |
-|---|---|
-| `GET /api/registry` | registry address, chainId, total attestations |
-| `GET /api/attestations?limit=N` | recent on-chain attestations |
-| `GET /api/attestation/:target` | latest attestation for a target |
-| `POST /api/audit {address, source?, attest?}` | run the agent; `attest:true` writes on-chain |
+```
+GET  /health                    → liveness check
+GET  /api/registry              → { address, chainId, total }
+GET  /api/attestations?limit=N  → recent on-chain audit verdicts
+POST /api/audit                 → { address: "0x...", source?: "...", attest?: true }
+```
 
----
+## Live Demo
+- **API:** http://31.220.75.26:8790/
+- **Registry:** `0x5C1F52Cd36CD8C3B63d697FEE891e511F886465A` (Mantle Sepolia)
 
-## 🧩 Tech
-
-- **Chain:** Mantle Sepolia · **Contracts:** Solidity 0.8.28 · **Tooling:** Hardhat 3
-- **Agent/API:** TypeScript, Node 20+, ethers v6, Express
-- **AI brain:** Z.AI GLM (`glm-4.5-flash`) with deterministic static-analysis fallback
-
-## 📜 License
-MIT
+## Tech Stack
+- Node.js 22, TypeScript, Express, ethers.js
+- Fireworks AI (AMD MI300X) for LLM semantic audit
+- 11 static vulnerability rules (reentrancy, access-control, oracle, etc.)
+- On-chain AttestationRegistry (Solidity)

@@ -1,9 +1,8 @@
 /**
  * LLM reasoning layer. Augments the static findings with semantic judgement.
  *
- * Provider: Z.AI (GLM) — chosen because Z.ai is an official AI partner of the
- * Turing Test Hackathon, so the agent's brain stays inside the sponsor ecosystem.
- * The interface is OpenAI-compatible, so swapping providers is a one-line change.
+ * Provider: Fireworks AI (AMD Developer Hackathon ACT II) — OpenAI-compatible
+ * endpoint running on AMD Instinct MI300X GPUs.
  *
  * Degrades gracefully: if no API key is configured, returns null and the agent
  * proceeds on static analysis alone (keyless mode). The agent is never blocked
@@ -11,9 +10,11 @@
  */
 import type { Finding } from "./analyzer.js";
 
-const ZAI_BASE = process.env.ZAI_BASE_URL || "https://api.z.ai/api/paas/v4";
-// glm-4.5-flash is on Z.AI's permanently-free tier (verified working 2026-06-05).
-const ZAI_MODEL = process.env.ZAI_MODEL || "glm-4.5-flash";
+const FIREWORKS_BASE = process.env.FIREWORKS_BASE_URL || "https://api.fireworks.ai/inference/v1";
+// Default to deepseek-v4-pro (strong reasoning, AMD-hosted on Fireworks)
+const FIREWORKS_MODEL = process.env.FIREWORKS_MODEL || process.env.ZAI_MODEL || "accounts/fireworks/models/deepseek-v4-pro";
+// Support both FIREWORKS_API_KEY and legacy ZAI_API_KEY
+const getApiKey = () => process.env.FIREWORKS_API_KEY || process.env.ZAI_API_KEY;
 
 export interface LlmAugmentation {
   extraFindings: Finding[];
@@ -35,7 +36,7 @@ export async function reasonWithLlm(
   source: string,
   staticFindings: Finding[],
 ): Promise<LlmAugmentation | null> {
-  const apiKey = process.env.ZAI_API_KEY;
+  const apiKey = getApiKey();
   if (!apiKey) return null; // keyless mode
 
   const user = `SOLIDITY SOURCE:\n\`\`\`solidity\n${source.slice(0, 16000)}\n\`\`\`\n\nSTATIC FINDINGS:\n${JSON.stringify(
@@ -46,15 +47,15 @@ export async function reasonWithLlm(
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
-    const res = await fetch(`${ZAI_BASE}/chat/completions`, {
+    const timer = setTimeout(() => controller.abort(), 60000);
+    const res = await fetch(`${FIREWORKS_BASE}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: ZAI_MODEL,
+        model: FIREWORKS_MODEL,
         temperature: 0.1,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
@@ -88,7 +89,7 @@ export async function reasonWithLlm(
     return {
       extraFindings,
       reasoning: parsed.reasoning || "",
-      model: ZAI_MODEL,
+      model: FIREWORKS_MODEL,
     };
   } catch (e: any) {
     console.warn(`[reasoner] LLM error: ${e?.message}; falling back to static-only.`);
